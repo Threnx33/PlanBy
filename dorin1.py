@@ -7,15 +7,13 @@ import json
 app = Flask(__name__)
 CORS(app) # cross origin
 
-@app.route("/",methods=['GET','POST','PUT'])
+@app.route("/site.html",methods=['GET','POST','PUT'])
 def get_orar():
 
     
     data = request.json
     x = json.loads(data)
-    print(x["grupa"])
-    x["grupa"] = {} #doar dictionar ai voie in jscript
-    return x["grupa"]
+    #print(x["grupa"]) #doar dictionar ai voie in jscript
 
     url = "https://www.cs.ubbcluj.ro/files/orar/2020-1/tabelar/I1.html"
 
@@ -24,18 +22,19 @@ def get_orar():
 
     table_all = soup.find_all("table")
 
-    """citit = input("Numarul grupei(ex: 211/1): ")
+    citit = x["grupa"] #citit = input("Numarul grupei(ex: 211/1): ")
 
     gr, subgr = citit.split("/")
     gr = int(gr)-211
-    subgr = int(subgr)"""
+    subgr = int(subgr)
 
     gr = 0
     subgr = 1
 
     table = table_all[gr]
 
-    lista = []
+    k = 0
+    lista = {}
     rows = table.find_all("tr")
     for row in rows[1:]:
         zi = row.find_all("td")[0].text.strip()
@@ -63,9 +62,12 @@ def get_orar():
         #prof = prof.split(" ", 1)[1]
         
         if form == subgr:
-            lista.append([zi,ora,frecv,tip,disc,prof]) # nu am mai pus formatia
+            lista[k] = [zi,ora,frecv,tip,disc,prof] # nu am mai pus formatia
+            k += 1
 
-    for el in lista:
-        print(el)
+    #for el in lista:
+        #print(el)
+    
+    return lista
 
 app.run(debug = True)
