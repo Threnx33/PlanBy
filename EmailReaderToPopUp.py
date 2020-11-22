@@ -1,6 +1,11 @@
 import email
 import imaplib
 import re
+from flask import Flask, render_template, request, jsonify
+import requests
+from flask_cors import CORS
+import json
+from datetime import date
 
 from Errors import PlatformError, HourError
 
@@ -26,7 +31,6 @@ def FindPlatform(message):
       if platform in temp:  
         return elem
   raise PlatformError("Nu am gasit nici o platforma!\n")
-      
 
 def FindHour(message):
   hours = []
@@ -54,7 +58,6 @@ def FindHour(message):
           if len(hour) == 1:
             j -= 1
           if message[j + 3 : j + 5].isdigit() and (message[j + 2] in separator):
-#            print("Found one")
             return hour + " " + message[j + 3 : j + 5]
   raise HourError("Nu am gasit nici o ora in email!\n")
 
@@ -70,28 +73,24 @@ def Logare():
   return M
 
 def SearchPlatformAndHour(Account):
-  while True:
-    typ, data = Account.search(None, 'unseen')
-    Platform = None
-    Hour = None
-    rez = []
-    last_email_num = b'-1'
-    for num in reversed(data[0].split()):
-      typ, data = Account.fetch(num, '(RFC822)')
-      last_email_num = max(num, last_email_num)
-      raw = email.message_from_bytes(data[0][1])
-      TheMessage = ConvertMessageToString(raw)
-      try:
-        Platform = FindPlatform(TheMessage)
-      except PlatformError:
-        continue
-      try:
-        Hour = FindHour(TheMessage)
-      except HourError:
-        continue
-      rez.append([Platform, Hour])
-    if len(rez):
-      return rez
+  typ, data = Account.search(None, 'unseen')
+  Platform = None
+  Hour = None
+  for num in reversed(data[0].split()):
+    typ, data = Account.fetch(num, '(RFC822)')
+    raw = email.message_from_bytes(data[0][1])
+    TheMessage = ConvertMessageToString(raw)
+    print(TheMessage)
+    try:
+      Platform = FindPlatform(TheMessage)
+    except PlatformError:
+      continue
+    print(Platform)
+    try:
+      Hour = FindHour(TheMessage)
+    except HourError:
+      continue
+    return [Platform, Hour]
     raise Exception("Nu am putut gasi un meeting!\n")
 
 
@@ -99,15 +98,30 @@ def Delogare(Account):
   Account.close()
   Account.logout()
 
-if __name__ == "__main__":
+
+app = Flask(__name__)
+CORS(app) # cross origin
+
+@app.route("/cerere.html", methods=['GET', 'POST', 'PUT'])
+def run():
+
+  data = request.json
+  x = json.loads(data)
+  k = 0
   while True:
     cont = Logare()
+    k += 1
+    print("Cautarea nr: " + str(k))
     try:
-      meetings = SearchPlatformAndHour(cont)
-      print(meetings)
-      for meet in meetings:
-        print(meet[0] + " -> " + meet[1] + "\n")
+      Platforma, Hour = SearchPlatformAndHour(cont)
+      dictionar = {}
+      dictionar["platforma"] = Platforma
+      dictionar["ora"] = Hour
+      Delogare(cont)
+      return dictionar
       #meetings -> contine toate meetingurile din mailurile necitite
     except Exception as ex:
       continue
     Delogare(cont)
+
+app.run(debug = True)
