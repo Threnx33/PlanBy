@@ -32,6 +32,40 @@ def FindPlatform(message):
         return elem
   raise PlatformError("Nu am gasit nici o platforma!\n")
 
+def FindDay(message):
+  days = []
+  months = []
+  separators = ["/", "."]
+  for i in range (1, 31):
+    days.append(str(i))
+  for i in range(1, 13):
+    months.append(str(i))
+  for i in reversed(days):
+    day = i
+    occurrences = [m.start() for m in re.finditer(day, message)]
+    for j in occurrences:
+      try:
+        month = int(message[j + 3 : j + 5])
+      except ValueError:
+        try:
+          month = int(message[j + 3])
+        except ValueError:
+          continue
+        except IndexError:
+          break
+      except IndexError:
+        try:
+          month = int(message[j + 3])
+        except ValueError:
+          continue
+        except IndexError:
+          break
+        print(day)
+      if (str(month) in months) and (message[j + 2] in separators):
+        print(day, str(month))
+        return day + " " + str(month)
+  raise HourError("Nu am gasit nici o data calendaristica in email!\n")
+
 def FindHour(message):
   hours = []
   separator = [" ", ":", ";", "-"]
@@ -61,6 +95,8 @@ def FindHour(message):
             return hour + " " + message[j + 3 : j + 5]
   raise HourError("Nu am gasit nici o ora in email!\n")
 
+
+
 def Logare():
   user = "rachetaalbastra8@gmail.com"
   password = "functiifarateste"
@@ -80,17 +116,19 @@ def SearchPlatformAndHour(Account):
     typ, data = Account.fetch(num, '(RFC822)')
     raw = email.message_from_bytes(data[0][1])
     TheMessage = ConvertMessageToString(raw)
-    print(TheMessage)
     try:
       Platform = FindPlatform(TheMessage)
     except PlatformError:
       continue
-    print(Platform)
     try:
       Hour = FindHour(TheMessage)
     except HourError:
       continue
-    return [Platform, Hour]
+    try:
+      DataCalendaristica = FindDay(TheMessage)
+    except HourError as re:
+      print(re)
+    return [Platform, Hour, DataCalendaristica]
     raise Exception("Nu am putut gasi un meeting!\n")
 
 
@@ -113,10 +151,13 @@ def run():
     k += 1
     print("Cautarea nr: " + str(k))
     try:
-      Platforma, Hour = SearchPlatformAndHour(cont)
+      Platforma, Hour, DataCalendaristica = SearchPlatformAndHour(cont)
       dictionar = {}
       dictionar["platforma"] = Platforma
       dictionar["ora"] = Hour
+      lista = DataCalendaristica.split()
+      dictionar["zi"] = lista[0]
+      dictionar["luna"] = lista[1]
       Delogare(cont)
       return dictionar
       #meetings -> contine toate meetingurile din mailurile necitite
